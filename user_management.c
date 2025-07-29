@@ -1,5 +1,8 @@
 #include<stdio.h>
 #include<string.h>
+#include<unistd.h>
+#include<termios.h>
+
 #define MAX_USERS 10
 #define Credential_length 30
 
@@ -14,7 +17,7 @@ int user_count =0;
 void register_user();
 int login_user();
 void fix_fgets_input(char*);
-void input_password(char*);
+void input_credentials(char* username, char* password);
 
 int main()
 {
@@ -37,7 +40,7 @@ int main()
     user_index= login_user();
     if(user_index >= 0)
     {
-        printf("\nLogin Successful. Welcome back %s", users[user_index].username);
+        printf("\nLogin Successful. Welcome back %s\n", users[user_index].username);
     }else {
         printf("\nLogin failed. Incorrect username or password\n");
     }
@@ -50,13 +53,7 @@ int main()
     printf("\nInvalid option. Please try again.\n");
         break;
     }
-
-
-
-
-
     }
-
 
     return 0;
 }
@@ -70,10 +67,7 @@ void register_user()
     int new_index= user_count;
 
     printf("\nRegister a new user");
-    printf("\nEnter Username:");
-    fgets(users[new_index].username,Credential_length,stdin);
-    fix_fgets_input(users[new_index].username);
-    input_password(users[new_index].password);
+    input_credentials(users[new_index].username,users[new_index].password);
     user_count++;
     printf("\nregistration successful\n");
 }
@@ -81,24 +75,44 @@ int login_user()
 {
     char username[Credential_length];
     char password[Credential_length];
-    printf("Enter Username:");
-    fgets(username,Credential_length,stdin);
-    fix_fgets_input(username);
-    input_password(password);
+   
+    input_credentials(username, password);
 
     for(int i=0;i<user_count;i++){
         if(strcmp(username,users[i].username)==0 && 
-           strcmp(password,users[i].password)){
+           strcmp(password,users[i].password)==0 ){
             return i;
            }
          }
     return -1;
 }
 
-void input_password(char* password){
-    printf("\nEnter password\n");
-    fgets(password,Credential_length,stdin);
-    fix_fgets_input(password);
+void input_credentials(char* username, char* password){
+     printf("Enter Username:");
+    fgets(username,Credential_length,stdin);
+    fix_fgets_input(username);
+    printf("\nEnter password(masking enabled)");
+    fflush(stdout);
+
+    //change terminal properties
+    struct termios old_props,new_props;
+    tcgetattr(STDIN_FILENO, &old_props);
+    new_props= old_props;
+    new_props.c_lflag = ~(ECHO | ICANON);
+    tcsetattr(STDIN_FILENO,TCSANOW, &new_props);
+    
+
+    char ch;
+    int i =0;
+    
+    while ((ch= getchar())!= '\n' && ch != EOF){
+        password[i++]=ch;
+        printf("*");
+    }
+    password[i]='\0';
+    
+    tcsetattr(STDIN_FILENO, TCSANOW, &old_props);
+    
 }
 
 void fix_fgets_input(char* string ){
